@@ -1,0 +1,20 @@
+# --- Emacs backups / autosaves / locks ---
+*~                  # backup files: foo.el~
+\#*\#               # autosave files: #foo.el#
+.#*                 # lockfiles: .#foo.el
+
+# --- Compiled Emacs Lisp ---
+# top-level
+*.elc
+*.eln
+# any subdirectory
+**/*.elc
+**/*.eln
+# native-comp cache dirs
+eln-cache/
+**/eln-cache/**
+
+# --- Tags & misc ---
+TAGS
+tags
+.DS_Store

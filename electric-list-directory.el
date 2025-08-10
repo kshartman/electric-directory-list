@@ -31,8 +31,8 @@
 ;;
 ;; Usage:
 ;;   M-x electric-list-directory
-;;   (Optionally bind it to the key that currently runs `list-directory`
-;;    with `electric-list-directory-setup-keys`.)
+;;   ;; Bind to C-x C-d (replaces `list-directory`):
+;;   (global-set-key (kbd "C-x C-d") #'electric-list-directory)
 ;;
 ;;; Code:
 
@@ -42,25 +42,28 @@
   :prefix "electric-list-directory-")
 
 (defcustom electric-list-directory-replace-list-directory nil
-  "If non-nil, bind `electric-list-directory' to \\<global-map>\\[list-directory] at load time, replacing `list-directory'."
+  "Enable binding at load time.
+If non-nil, bind `electric-list-directory` to the standard `list-directory`
+key (historically ‘C-\\=x C-\\=d’), replacing `list-directory`."
   :type 'boolean
   :group 'electric-list-directory)
 
 ;;;###autoload
 (defun electric-list-directory-setup-keys ()
-  "Bind `electric-list-directory' to \\<global-map>\\[list-directory], replacing `list-directory'."
+  "Bind `electric-list-directory` to the standard `list-directory` key."
   (interactive)
-  ;; Keep the actual default binding (commonly C-x C-d) for broad compatibility.
+  ;; Keep the common default binding for broad compatibility.
   (global-set-key (kbd "C-x C-d") #'electric-list-directory))
 
-;;;###autoload
 (when electric-list-directory-replace-list-directory
   (electric-list-directory-setup-keys))
 
 (defvar-local electric-list-directory--winconf nil
   "Saved window configuration for restoring after quit.")
+
 (defvar-local electric-list-directory--dir nil
   "Directory currently shown in *Electric Directory*.")
+
 (defvar-local electric-list-directory--switches nil
   "Switches used to render the listing (sanitized).")
 
@@ -98,7 +101,8 @@
   "Update the header line to show the current directory."
   (setq header-line-format
         (concat "  📁 "
-                (abbreviate-file-name (or electric-list-directory--dir default-directory)))))
+                (abbreviate-file-name
+                 (or electric-list-directory--dir default-directory)))))
 
 (defun electric-list-directory--refresh ()
   "Re-render the listing for current buffer settings."
@@ -115,8 +119,9 @@
 
 ;;;###autoload
 (defun electric-list-directory (dirname &optional switches)
-  "List DIRNAME in an *Electric Directory* popup.
-With a prefix argument, run plain `list-directory` instead."
+  "Browse DIRNAME in a temporary electric directory buffer.
+With a prefix argument, run plain `list-directory` instead.
+If SWITCHES is supplied, use that for list directory."
   (interactive
    (list (read-directory-name "Electric List Directory: " nil default-directory t)
          (when current-prefix-arg
@@ -148,23 +153,24 @@ With a prefix argument, run plain `list-directory` instead."
                (eol (line-end-position))
                (line (buffer-substring-no-properties bol eol)))
           (cond
-           ;; symlink line: take name before \" -> \"
+           ;; Symlink line: take name before \" -> \"
            ((string-match "\\([^ ]\\(?:.*[^ ]\\)?\\)\\s-*->\\s-.*$" line)
             (expand-file-name (match-string 1 line) default-directory))
-           ;; otherwise last field after two+ spaces
+           ;; Otherwise last field after two+ spaces
            ((string-match "\\s-\\{2,\\}\\([^ ].*\\)$" line)
             (expand-file-name (match-string 1 line) default-directory))
            (t nil))))))))
 
 (defun electric-list-directory-visit ()
-  "If point is on a directory, drill into it; if on a file, visit and exit."
+  "If on a directory, drill into it; if on a file, visit and exit."
   (interactive)
   (let ((path (electric-list-directory--filename-at-point)))
     (cond
      ((null path)
       (message "No file at point"))
      ((file-directory-p path)
-      (setq electric-list-directory--dir (file-name-as-directory (expand-file-name path)))
+      (setq electric-list-directory--dir
+            (file-name-as-directory (expand-file-name path)))
       (electric-list-directory--refresh)
       (message "Entered %s" electric-list-directory--dir))
      (t
@@ -178,13 +184,15 @@ With a prefix argument, run plain `list-directory` instead."
 (defun electric-list-directory-up ()
   "Go up one directory level."
   (interactive)
-  (let ((parent (file-name-directory (directory-file-name electric-list-directory--dir))))
-    (setq electric-list-directory--dir (file-name-as-directory (expand-file-name parent)))
+  (let ((parent (file-name-directory
+                 (directory-file-name electric-list-directory--dir))))
+    (setq electric-list-directory--dir
+          (file-name-as-directory (expand-file-name parent)))
     (electric-list-directory--refresh)
     (message "Up to %s" electric-list-directory--dir)))
 
 (defun electric-list-directory-delete-at-point ()
-  "Prompt and delete the file/dir at point, then refresh (stay in list)."
+  "Prompt and delete the file or directory at point, then refresh."
   (interactive)
   (let ((file (electric-list-directory--filename-at-point)))
     (cond
@@ -192,18 +200,20 @@ With a prefix argument, run plain `list-directory` instead."
       (message "No file at point"))
      ((file-directory-p file)
       (when (y-or-n-p (format "Delete directory %s recursively? "
-                              (file-name-nondirectory (directory-file-name file))))
+                              (file-name-nondirectory
+                               (directory-file-name file))))
         (delete-directory file t)
         (message "Deleted %s" file)
         (electric-list-directory--refresh)))
      (t
-      (when (y-or-n-p (format "Delete file %s? " (file-name-nondirectory file)))
+      (when (y-or-n-p (format "Delete file %s? "
+                              (file-name-nondirectory file)))
         (delete-file file)
         (message "Deleted %s" file)
         (electric-list-directory--refresh))))))
 
 (defun electric-list-directory-delete-backups ()
-  "Prompt and delete *~ and #*# files in the current listing dir, then refresh."
+  "Delete backup and autosave files in the current directory, then refresh."
   (interactive)
   (let* ((dir (or electric-list-directory--dir default-directory))
          (cands (append (file-expand-wildcards (expand-file-name "*~" dir) t)
@@ -218,7 +228,7 @@ With a prefix argument, run plain `list-directory` instead."
         (electric-list-directory--refresh)))))
 
 (defun electric-list-directory-quit ()
-  "Quit the electric directory buffer, restoring prior windows."
+  "Quit the electric directory buffer and restore previous windows."
   (interactive)
   (let ((conf electric-list-directory--winconf))
     (when (get-buffer "*Electric Directory*")
