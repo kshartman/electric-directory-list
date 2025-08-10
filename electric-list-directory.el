@@ -1,7 +1,7 @@
 ;;; electric-list-directory.el --- Lightweight popup directory browser -*- lexical-binding: t; -*-
 ;;
 ;; Author: K. Shane Hartman <shane@ai.mit.edu>
-;; Version: 1.2
+;; Version: 1.3
 ;; Package-Requires: ((emacs "26.1"))
 ;; Keywords: files, convenience
 ;; URL: https://github.com/kshartman/electric-directory-list
@@ -81,19 +81,25 @@ key (historically ‘C-\\=x C-\\=d’), replacing `list-directory`."
   (define-key m (kbd "d")   #'electric-list-directory-delete-at-point))
 
 (defun electric-list-directory--sanitize-switches (sw)
-  "Remove -d/--directory from SW so we list contents, not the dir itself."
+  "Return ls flags suitable for Electric view from SW.
+Remove flags that break parsing (-d and -F / --directory and --classify),
+but allow columns.  Keep user layout (columns -C/-x/-m or long -l)."
   (let* ((src (or sw list-directory-brief-switches))
          (tokens (split-string src "[ \t]+" t))
          (out '()))
     (dolist (tok tokens)
       (cond
-       ((string= tok "--directory") nil)
-       ((string-prefix-p "--" tok) (push tok out))
+       ;; Long options: drop only ones that alter names or list the dir itself.
+       ((string-prefix-p "--" tok)
+        (unless (member tok '("--directory" "--classify"))
+          (push tok out)))
+       ;; Short bundles: strip d (dir-only) and F (classify); keep the rest.
        ((string-prefix-p "-" tok)
         (let* ((flags (substring tok 1))
-               (flags (replace-regexp-in-string "d" "" flags)))
+               (flags (replace-regexp-in-string "[dF]" "" flags)))
           (unless (string= flags "")
             (push (concat "-" flags) out))))
+       ;; Anything else (rare) — keep.
        (t (push tok out))))
     (mapconcat #'identity (nreverse out) " ")))
 
@@ -142,24 +148,53 @@ If SWITCHES is supplied, use that for list directory."
       (pop-to-buffer buf))))
 
 (defun electric-list-directory--filename-at-point ()
-  "Return absolute filename under point, or nil."
-  (let* ((tap (thing-at-point 'filename t))
-         (cand (when tap (expand-file-name tap default-directory))))
-    (cond
-     ((and cand (file-exists-p cand)) cand)
-     (t
-      (save-excursion
-        (let* ((bol (line-beginning-position))
-               (eol (line-end-position))
-               (line (buffer-substring-no-properties bol eol)))
-          (cond
-           ;; Symlink line: take name before \" -> \"
-           ((string-match "\\([^ ]\\(?:.*[^ ]\\)?\\)\\s-*->\\s-.*$" line)
-            (expand-file-name (match-string 1 line) default-directory))
-           ;; Otherwise last field after two+ spaces
-           ((string-match "\\s-\\{2,\\}\\([^ ].*\\)$" line)
-            (expand-file-name (match-string 1 line) default-directory))
-           (t nil))))))))
+  "Return absolute filename under point for columns or long listings.
+
+- For `ls -l` style lines (permission char at col 0), take the last field;
+  if it's a symlink (\"NAME -> TARGET\"), use NAME.
+- For columnar output, take the token under point, where columns are
+  separated by runs of 2+ spaces. Strip any -F/-p suffixes."
+  (save-excursion
+    (let* ((bol  (line-beginning-position))
+           (eol  (line-end-position))
+           (line (buffer-substring-no-properties bol eol)))
+      ;; Ignore headers like "total N" and blank lines.
+      (when (and (not (string-match-p "\\`[[:space:]]*\\'" line))
+                 (not (string-prefix-p "total " line)))
+        (cond
+         ;; Long listing (starts with file type/perm bit)
+         ((string-match-p "^[bcdlps-]" line)
+          (when (string-match "\\s-\\{2,\\}\\(.+\\)$" line)
+            (let ((name (match-string 1 line)))
+              ;; If it's "NAME -> TARGET", keep NAME only.
+              (when (string-match "\\`\\(.+?\\)\\s-*->\\s-.*\\'" name)
+                (setq name (match-string 1 name)))
+              ;; Strip any -F/-p trailing markers and slashes.
+              (when (string-match "\\(.*?\\)[*/=>@|/]\\'" name)
+                (setq name (match-string 1 name)))
+              (expand-file-name name default-directory))))
+         ;; Columnar output
+         (t
+          (let* ((pt (point)) start end token)
+            ;; start: just after previous 2+ spaces (or BOL)
+            (goto-char pt)
+            (if (re-search-backward "[[:space:]]\\{2,\\}" bol t)
+                (setq start (match-end 0))
+              (setq start bol))
+            ;; end: just before next 2+ spaces (or EOL)
+            (goto-char pt)
+            (if (re-search-forward "[[:space:]]\\{2,\\}" eol t)
+                (setq end (match-beginning 0))
+              (setq end eol))
+            (setq token (buffer-substring-no-properties start end))
+            ;; trim whitespace without requiring subr-x
+            (setq token (replace-regexp-in-string
+                         "\\`[[:space:]]+\\|[[:space:]]+\\'" "" token))
+            (when (not (string= token ""))
+              ;; Strip -F classification suffixes and trailing slash from -p.
+              (when (string-match "\\(.*?\\)[*/=>@|/]\\'" token)
+                (setq token (match-string 1 token)))
+              (expand-file-name token default-directory)))))))))
 
 (defun electric-list-directory-visit ()
   "If on a directory, drill into it; if on a file, visit and exit."
