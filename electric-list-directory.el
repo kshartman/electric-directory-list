@@ -49,7 +49,7 @@
 (defun electric-list-directory-setup-keys ()
   "Bind `electric-list-directory' to C-x C-d, replacing `list-directory'."
   (interactive)
-  (keymap-global-set "C-x C-d" #'electric-list-directory))
+  (global-set-key (kbd "C-x C-d") #'electric-list-directory))
 
 ;;;###autoload
 (when electric-list-directory-replace-list-directory
