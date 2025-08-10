@@ -1,5 +1,8 @@
 # electric-list-directory
 
+[![MELPA](https://melpa.org/packages/electric-list-directory-badge.svg)](https://melpa.org/#/electric-list-directory)
+[![MELPA Stable](https://stable.melpa.org/packages/electric-list-directory-badge.svg)](https://stable.melpa.org/#/electric-list-directory)
+
 A lightweight popup directory browser for Emacs.
 
 ## Features
