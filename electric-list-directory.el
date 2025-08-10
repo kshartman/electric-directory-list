@@ -1,10 +1,10 @@
 ;;; electric-list-directory.el --- Lightweight popup directory browser -*- lexical-binding: t; -*-
 ;;
 ;; Author: K. Shane Hartman <shane@ai.mit.edu>
-;; Version: 1.1
+;; Version: 1.2
 ;; Package-Requires: ((emacs "26.1"))
 ;; Keywords: files, convenience
-;; URL: https://github.com/kshartman/electric-list-directory
+;; URL: https://github.com/kshartman/electric-directory-list
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;
 ;; This program is free software: you can redistribute it and/or modify
@@ -23,15 +23,16 @@
 ;; - d deletes file/dir at point (with prompt) and refreshes in place.
 ;; - ~ deletes backup/autosave files (*~ and #*#) and refreshes.
 ;; - Backspace (DEL) goes up one directory level.
-;; - q quits and restores your previous window layout.
-;; - Prefix arg (C-u) runs plain `list-directory`.
+;; - SPC or q quits and restores your previous window layout.
+;; - With a prefix argument, run plain `list-directory`.
 ;;
 ;; Install:
 ;;   (require 'electric-list-directory)
 ;;
 ;; Usage:
 ;;   M-x electric-list-directory
-;;   (Optionally bind it to C-x C-d with `electric-list-directory-setup-keys`)
+;;   (Optionally bind it to the key that currently runs `list-directory`
+;;    with `electric-list-directory-setup-keys`.)
 ;;
 ;;; Code:
 
@@ -41,14 +42,15 @@
   :prefix "electric-list-directory-")
 
 (defcustom electric-list-directory-replace-list-directory nil
-  "If non-nil, bind `electric-list-directory' to C-x C-d at load time."
+  "If non-nil, bind `electric-list-directory' to \\<global-map>\\[list-directory] at load time, replacing `list-directory'."
   :type 'boolean
   :group 'electric-list-directory)
 
 ;;;###autoload
 (defun electric-list-directory-setup-keys ()
-  "Bind `electric-list-directory' to C-x C-d, replacing `list-directory'."
+  "Bind `electric-list-directory' to \\<global-map>\\[list-directory], replacing `list-directory'."
   (interactive)
+  ;; Keep the actual default binding (commonly C-x C-d) for broad compatibility.
   (global-set-key (kbd "C-x C-d") #'electric-list-directory))
 
 ;;;###autoload
@@ -67,8 +69,8 @@
 
 (let ((m electric-list-directory-mode-map))
   (define-key m (kbd "q")   #'electric-list-directory-quit)
+  (define-key m (kbd "SPC") #'electric-list-directory-quit)  ;; Space always exits
   (define-key m (kbd "RET") #'electric-list-directory-visit)
-  (define-key m (kbd "SPC") #'scroll-up-command)
   (define-key m (kbd "DEL") #'electric-list-directory-up)
   (define-key m (kbd "n")   #'next-line)
   (define-key m (kbd "p")   #'previous-line)
@@ -102,6 +104,7 @@
   "Re-render the listing for current buffer settings."
   (let ((inhibit-read-only t))
     (erase-buffer)
+    ;; Force content listing (FULL-DIRECTORY-P = t).
     (insert-directory electric-list-directory--dir
                       electric-list-directory--switches
                       nil t)
@@ -113,7 +116,7 @@
 ;;;###autoload
 (defun electric-list-directory (dirname &optional switches)
   "List DIRNAME in an *Electric Directory* popup.
-With prefix arg, run plain `list-directory` instead."
+With a prefix argument, run plain `list-directory` instead."
   (interactive
    (list (read-directory-name "Electric List Directory: " nil default-directory t)
          (when current-prefix-arg
@@ -145,8 +148,10 @@ With prefix arg, run plain `list-directory` instead."
                (eol (line-end-position))
                (line (buffer-substring-no-properties bol eol)))
           (cond
+           ;; symlink line: take name before \" -> \"
            ((string-match "\\([^ ]\\(?:.*[^ ]\\)?\\)\\s-*->\\s-.*$" line)
             (expand-file-name (match-string 1 line) default-directory))
+           ;; otherwise last field after two+ spaces
            ((string-match "\\s-\\{2,\\}\\([^ ].*\\)$" line)
             (expand-file-name (match-string 1 line) default-directory))
            (t nil))))))))
