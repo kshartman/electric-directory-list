@@ -1,7 +1,7 @@
 ;;; electric-list-directory.el --- Lightweight popup directory browser -*- lexical-binding: t; -*-
 ;;
 ;; Author: K. Shane Hartman <shane@ai.mit.edu>
-;; Version: 1.3
+;; Version: 1.4
 ;; Package-Requires: ((emacs "26.1"))
 ;; Keywords: files, convenience
 ;; URL: https://github.com/kshartman/electric-directory-list
@@ -209,12 +209,11 @@ If SWITCHES is supplied, use that for list directory."
       (electric-list-directory--refresh)
       (message "Entered %s" electric-list-directory--dir))
      (t
-      (let ((conf electric-list-directory--winconf))
-        (find-file path)
-        (when (get-buffer "*Electric Directory*")
-          (kill-buffer "*Electric Directory*"))
-        (when conf
-          (set-window-configuration conf)))))))
+      ;; Open the file in this window and close the popup.
+      ;; DO NOT restore the saved window configuration here.
+      (find-file path)
+      (when (get-buffer "*Electric Directory*")
+        (kill-buffer "*Electric Directory*"))))))
 
 (defun electric-list-directory-up ()
   "Go up one directory level."
