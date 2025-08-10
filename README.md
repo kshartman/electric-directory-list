@@ -8,12 +8,15 @@ A lightweight “electric” popup directory browser for Emacs.
 ## Features
 - Popup buffer: `*Electric Directory*` (reused every time).
 - Header line shows the current directory (abbreviated).
-- `RET` on a file opens it **and exits**; `RET` on a directory **drills into it**.
+- `RET` on a file opens it **and exits**; `RET` on a directory **drills into it**. Works with both **column** layouts (`-C/-x/-m`) and **long** listings (`-l`).
 - `d` deletes the file/dir at point (with prompt) and **refreshes in place**.
 - `~` deletes backup/autosave files (`*~` and `#*#`) and **refreshes**.
 - `Backspace` (`DEL`) goes **up one directory**.
 - `SPC` **or** `q` quits and restores your previous window layout.
 - With a prefix argument (`C-u`), run plain `list-directory`.
+
+### Switches
+The popup preserves your layout flags but sanitizes only `-d/--directory` and `-F/--classify` so filename parsing remains stable. Use a prefix argument (`C-u`) when invoking to be prompted for switches.
 
 ### Key bindings (inside *Electric Directory*)
 - `RET` — visit file (exit) / enter directory (stay)
@@ -53,8 +56,9 @@ If the file is in your load-path (e.g., `~/.e/`):
 ```
 M-x electric-list-directory
 ```
-- Invoke with a prefix arg (`C-u`) to get the boring, built-in `list-directory`.
+- Invoke with a prefix arg (`C-u`) to get the built-in `list-directory` and a prompt for switches.
 
 ## Changelog
-- **1.2** — Space quits (`SPC` behaves like `q`); docstrings cleaned up; keep Emacs 26.1+ compatibility.
+- **1.3** — RET now works with **column** layouts (`-C/-x/-m`) and **long** listings (`-l`); sanitize only `-d/--directory` and `-F/--classify`; docstrings wrapped and key names quoted for package-lint; README updated.
+- **1.2** — Space quits (`SPC` behaves like `q`); docstrings cleaned; Emacs 26.1+ compatibility.
 - **1.1** — Header line with current dir; drill-in on directories; delete helpers.
