@@ -1,7 +1,7 @@
 ;;; electric-list-directory.el --- Lightweight popup directory browser -*- lexical-binding: t; -*-
 ;;
 ;; Author: K. Shane Hartman <shane@ai.mit.edu>
-;; Version: 1.4
+;; Version: 1.4.1
 ;; Package-Requires: ((emacs "26.1"))
 ;; Keywords: files, convenience
 ;; URL: https://github.com/kshartman/electric-directory-list
