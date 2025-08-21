@@ -26,13 +26,19 @@
 ;; - SPC or q quits and restores your previous window layout.
 ;; - With a prefix argument, run plain `list-directory`.
 ;;
-;; Install:
+;; Installation:
+;;
+;; Manual:
 ;;   (require 'electric-list-directory)
+;;   ;; Bind to C-x C-d (Note: this replaces the default `list-directory` binding):
+;;   (global-set-key (kbd "C-x C-d") #'electric-list-directory)
+;;
+;; With use-package:
+;;   (use-package electric-list-directory
+;;     :bind ("C-x C-d" . electric-list-directory))  ;; Replaces default `list-directory`
 ;;
 ;; Usage:
 ;;   M-x electric-list-directory
-;;   ;; Bind to C-x C-d (replaces `list-directory`):
-;;   (global-set-key (kbd "C-x C-d") #'electric-list-directory)
 ;;
 ;;; Code:
 
@@ -41,22 +47,6 @@
   :group 'files
   :prefix "electric-list-directory-")
 
-(defcustom electric-list-directory-replace-list-directory nil
-  "Enable binding at load time.
-If non-nil, bind `electric-list-directory` to the standard `list-directory`
-key (historically ‘C-\\=x C-\\=d’), replacing `list-directory`."
-  :type 'boolean
-  :group 'electric-list-directory)
-
-;;;###autoload
-(defun electric-list-directory-setup-keys ()
-  "Bind `electric-list-directory` to the standard `list-directory` key."
-  (interactive)
-  ;; Keep the common default binding for broad compatibility.
-  (global-set-key (kbd "C-x C-d") #'electric-list-directory))
-
-(when electric-list-directory-replace-list-directory
-  (electric-list-directory-setup-keys))
 
 (defvar-local electric-list-directory--winconf nil
   "Saved window configuration for restoring after quit.")

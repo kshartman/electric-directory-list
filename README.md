@@ -39,9 +39,7 @@ Using `use-package`:
 ```elisp
 (use-package electric-list-directory
   :ensure t
-  :config
-  ;; Bind to C-x C-d (replaces `list-directory`)
-  (global-set-key (kbd "C-x C-d") #'electric-list-directory))
+  :bind ("C-x C-d" . electric-list-directory))  ; Replaces default `list-directory`
 ```
 
 ### Manual / local checkout
@@ -49,6 +47,7 @@ If the file is in your load-path (e.g., `~/.e/`):
 ```elisp
 (autoload 'electric-list-directory "electric-list-directory"
   "Browse DIRNAME in an electric directory buffer." t)
+;; Bind to C-x C-d (Note: this replaces the default `list-directory` binding):
 (global-set-key (kbd "C-x C-d") #'electric-list-directory)
 ```
 
